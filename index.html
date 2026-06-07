@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACP Interactivo — Análisis de Componentes Principales</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--color-background-tertiary,#f5f5f5);color:var(--color-text-primary,#111);font-size:14px}
+header{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;padding:1.2rem 1.5rem}
+header h1{font-size:1.3rem;font-weight:500}
+header p{font-size:0.8rem;opacity:0.85;margin-top:0.2rem}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:1rem;padding:1rem;max-width:1600px;margin:0 auto}
+.sidebar{display:flex;flex-direction:column;gap:0.75rem}
+.card{background:var(--color-background-primary,#fff);border:0.5px solid var(--color-border-tertiary,#e0e0e0);border-radius:12px;padding:1rem}
+.card h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-secondary,#666);margin-bottom:0.75rem;padding-bottom:0.4rem;border-bottom:0.5px solid var(--color-border-tertiary,#e0e0e0)}
+.pr{display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem}
+.pr label{font-size:0.75rem;color:var(--color-text-secondary,#666);display:flex;justify-content:space-between}
+.pr label strong{color:var(--color-text-primary,#111)}
+input[type=range]{width:100%;accent-color:#2563eb;cursor:pointer}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:0.6rem}
+.grid3 label{font-size:0.7rem;color:var(--color-text-secondary,#666);display:block;margin-bottom:2px}
+.grid3 input[type=number]{width:100%;padding:3px 5px;border:0.5px solid var(--color-border-tertiary,#e0e0e0);border-radius:6px;font-size:0.78rem;color:var(--color-text-primary,#111);background:var(--color-background-primary,#fff)}
+.pgroup{font-size:0.75rem;font-weight:500;color:var(--color-text-secondary,#555);margin-bottom:0.4rem;margin-top:0.2rem}
+btn{display:block}
+button{width:100%;padding:0.55rem;border:0.5px solid var(--color-border-secondary,#ccc);border-radius:8px;font-size:0.85rem;font-weight:500;cursor:pointer;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#111);transition:all 0.15s;margin-bottom:0.4rem}
+button.primary{background:#2563eb;color:#fff;border-color:#2563eb}
+button.primary:hover{background:#1d4ed8}
+button.secondary{background:#7c3aed;color:#fff;border-color:#7c3aed}
+button.secondary:hover{background:#6d28d9}
+button:disabled{opacity:0.5;cursor:not-allowed}
+.warn{background:#fef2f2;border:0.5px solid #fca5a5;color:#dc2626;font-size:0.72rem;padding:0.4rem 0.6rem;border-radius:6px;margin-top:0.3rem;display:none}
+.status{font-size:0.78rem;padding:0.5rem 0.7rem;border-radius:8px;min-height:2.2rem;border:0.5px solid transparent}
+.status.ok{background:#f0fdf4;border-color:#bbf7d0;color:#065f46}
+.status.go{background:#eff6ff;border-color:#bfdbfe;color:#1e40af}
+.status.err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+.main{display:flex;flex-direction:column;gap:1rem}
+.plots-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.pcard{background:var(--color-background-primary,#fff);border:0.5px solid var(--color-border-tertiary,#e0e0e0);border-radius:12px;padding:0.75rem}
+.pcard h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-secondary,#666);margin-bottom:0.3rem;text-align:center}
+.sec-title{font-size:0.85rem;font-weight:500;color:var(--color-text-primary,#111);margin-bottom:0.5rem;display:flex;align-items:center;gap:6px}
+.sec-title::before{content:'';display:inline-block;width:3px;height:14px;background:#2563eb;border-radius:2px}
+.mat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+table{width:100%;border-collapse:collapse;font-size:0.78rem}
+th{background:var(--color-background-secondary,#f5f5f5);padding:0.4rem 0.5rem;text-align:center;font-weight:500;color:var(--color-text-secondary,#666);border:0.5px solid var(--color-border-tertiary,#e0e0e0)}
+td{padding:0.38rem 0.5rem;text-align:center;border:0.5px solid var(--color-border-tertiary,#e0e0e0);font-family:'Courier New',monospace;font-size:0.75rem;color:var(--color-text-primary,#111)}
+tr:nth-child(even) td{background:var(--color-background-secondary,#fafafa)}
+.hl td{background:#eff6ff!important;font-weight:500;color:#2563eb}
+.vbar-lbl{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--color-text-secondary,#666);margin-bottom:2px}
+.vbar-track{height:18px;background:var(--color-background-secondary,#f0f0f0);border-radius:4px;overflow:hidden;margin-bottom:0.5rem}
+.vbar-fill{height:100%;border-radius:4px;transition:width 0.5s}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:0.78rem}
+.sum-grid span:nth-child(odd){color:var(--color-text-secondary,#666)}
+.sum-grid span:nth-child(even){font-weight:500}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}.plots-row{grid-template-columns:1fr}.mat-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h2 class="sr-only" style="position:absolute;left:-9999px">Explorador interactivo de Análisis de Componentes Principales con datos sintéticos multivariados en 3 dimensiones</h2>
+<header>
+  <h1>Análisis de Componentes Principales (ACP)</h1>
+  <p>Datos sintéticos multivariados · 3 variables · 100,000 observaciones · visualización interactiva</p>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+
+    <div class="card">
+      <h3>Parámetros del Dataset</h3>
+      <p class="pgroup">Medias (μ)</p>
+      <div class="grid3">
+        <div><label>X₁</label><input type="number" id="m1" value="10" step="1"></div>
+        <div><label>X₂</label><input type="number" id="m2" value="25" step="1"></div>
+        <div><label>X₃</label><input type="number" id="m3" value="-5" step="1"></div>
+      </div>
+      <p class="pgroup">Desvíos estándar (σ)</p>
+      <div class="grid3">
+        <div><label>σ₁</label><input type="number" id="s1" value="5" min="0.1" step="0.5"></div>
+        <div><label>σ₂</label><input type="number" id="s2" value="12" min="0.1" step="0.5"></div>
+        <div><label>σ₃</label><input type="number" id="s3" value="3" min="0.1" step="0.5"></div>
+      </div>
+      <p class="pgroup">Correlaciones (ρ)</p>
+      <div class="pr">
+        <label>ρ(X₁,X₂) <strong id="v12">0.70</strong></label>
+        <input type="range" id="r12" min="-0.95" max="0.95" step="0.05" value="0.70">
+      </div>
+      <div class="pr">
+        <label>ρ(X₁,X₃) <strong id="v13">−0.40</strong></label>
+        <input type="range" id="r13" min="-0.95" max="0.95" step="0.05" value="-0.40">
+      </div>
+      <div class="pr">
+        <label>ρ(X₂,X₃) <strong id="v23">0.20</strong></label>
+        <input type="range" id="r23" min="-0.95" max="0.95" step="0.05" value="0.20">
+      </div>
+      <div class="warn" id="corrWarn">⚠ Matriz de correlación no definida positiva. Ajustá los coeficientes.</div>
+    </div>
+
+    <div class="card">
+      <h3>Tamaño de Muestra</h3>
+      <div class="pr">
+        <label>n = <strong id="ssval">500</strong> observaciones</label>
+        <input type="range" id="ss" min="50" max="5000" step="50" value="500">
+      </div>
+      <p style="font-size:0.7rem;color:var(--color-text-secondary,#888);margin-top:4px">
+        Dataset: <strong>100,000</strong> obs. · Máx. visual: 5,000
+      </p>
+    </div>
+
+    <button class="primary" id="btnGen" onclick="run()">⚙ Generar dataset y ACP</button>
+    <button class="secondary" id="btnRe" onclick="resample()" disabled>↺ Nueva muestra (mismo dataset)</button>
+
+    <div class="status go" id="statusDiv">Configurá los parámetros y presioná Generar.</div>
+
+    <div class="card" id="sumCard" style="display:none">
+      <h3>Resumen</h3>
+      <div class="sum-grid" id="sumDiv"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div>
+      <div class="sec-title">Visualización 3D</div>
+      <div class="plots-row">
+        <div class="pcard">
+          <h3>Espacio original — X₁, X₂, X₃</h3>
+          <div id="planeCtrl" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;font-size:0.75px;opacity:0.4;pointer-events:none">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.75rem;color:var(--color-text-secondary,#666)">
+              <input type="checkbox" id="chk12"> <span style="color:#3b82f6;font-size:10px">■</span> Plano CP₁–CP₂
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.75rem;color:var(--color-text-secondary,#666)">
+              <input type="checkbox" id="chk13"> <span style="color:#a855f7;font-size:10px">■</span> Plano CP₁–CP₃
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.75rem;color:var(--color-text-secondary,#666)">
+              <input type="checkbox" id="chk23"> <span style="color:#14b8a6;font-size:10px">■</span> Plano CP₂–CP₃
+            </label>
+          </div>
+          <div id="p3orig" style="height:400px"></div>
+        </div>
+        <div class="pcard">
+          <h3>Espacio de componentes — CP₁, CP₂, CP₃</h3>
+          <div id="p3pca" style="height:400px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="varSec" style="display:none">
+      <div class="sec-title">Varianza explicada por componente</div>
+      <div class="card"><div id="varBars"></div></div>
+    </div>
+
+    <div id="matSec" style="display:none">
+      <div class="sec-title">Especificación del modelo ACP</div>
+      <div class="mat-row">
+        <div class="card">
+          <h3>Matriz de covarianza (S)</h3>
+          <div id="covDiv"></div>
+        </div>
+        <div class="card">
+          <h3>Matriz de correlación (R)</h3>
+          <div id="corDiv"></div>
+        </div>
+        <div class="card">
+          <h3>Autovalores</h3>
+          <div id="evDiv"></div>
+        </div>
+      </div>
+      <div style="margin-top:1rem" class="card">
+        <h3>Matriz de autovectores — coeficientes de carga (loadings)</h3>
+        <p style="font-size:0.72rem;color:var(--color-text-secondary,#666);margin-bottom:0.6rem">
+          Filas = variables originales · Columnas = componentes principales · Comunalidad = Σ coef²
+        </p>
+        <div id="loadDiv"></div>
+      </div>
+    </div>
+
+    <div id="biSec" style="display:none">
+      <div class="sec-title">Biplot — CP₁ vs CP₂</div>
+      <div class="pcard">
+        <div id="biplot" style="height:420px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Utilidades matemáticas ─────────────────────────────────────
+function randn(){
+  let u=0,v=0;
+  while(!u)u=Math.random();
+  while(!v)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function chol3(A){
+  const L=[[0,0,0],[0,0,0],[0,0,0]];
+  const a=A[0][0],b=A[1][1],c=A[2][2];
+  const ab=A[1][0],ac=A[2][0],bc=A[2][1];
+  const d3=a*(b*c-bc*bc)-ab*(ab*c-bc*ac)+ac*(ab*bc-b*ac);
+  if(a<=0||a*b-ab*ab<=0||d3<=0)return null;
+  L[0][0]=Math.sqrt(a);
+  L[1][0]=ab/L[0][0];
+  L[2][0]=ac/L[0][0];
+  L[1][1]=Math.sqrt(b-L[1][0]**2);
+  L[2][1]=(bc-L[2][0]*L[1][0])/L[1][1];
+  const v22=c-L[2][0]**2-L[2][1]**2;
+  if(v22<=0)return null;
+  L[2][2]=Math.sqrt(v22);
+  return L;
+}
+
+function jacobiEig3(M){
+  let a=M.map(r=>[...r]);
+  let V=[[1,0,0],[0,1,0],[0,0,1]];
+  for(let it=0;it<150;it++){
+    let mx=0,p=0,q=1;
+    for(let i=0;i<3;i++)for(let j=i+1;j<3;j++)if(Math.abs(a[i][j])>mx){mx=Math.abs(a[i][j]);p=i;q=j;}
+    if(mx<1e-12)break;
+    const tau=(a[q][q]-a[p][p])/(2*a[p][q]);
+    const t=(tau>=0?1:-1)/(Math.abs(tau)+Math.sqrt(1+tau*tau));
+    const c=1/Math.sqrt(1+t*t),s=t*c;
+    const app=a[p][p],aqq=a[q][q],apq=a[p][q];
+    a[p][p]=app-t*apq; a[q][q]=aqq+t*apq;
+    a[p][q]=0; a[q][p]=0;
+    for(let r=0;r<3;r++){
+      if(r!==p&&r!==q){
+        const rp=a[r][p],rq=a[r][q];
+        a[r][p]=c*rp-s*rq; a[p][r]=a[r][p];
+        a[r][q]=s*rp+c*rq; a[q][r]=a[r][q];
+      }
+    }
+    for(let r=0;r<3;r++){
+      const vp=V[r][p],vq=V[r][q];
+      V[r][p]=c*vp-s*vq; V[r][q]=s*vp+c*vq;
+    }
+  }
+  const ev=[a[0][0],a[1][1],a[2][2]];
+  const idx=[0,1,2].sort((i,j)=>ev[j]-ev[i]);
+  return{
+    values:idx.map(i=>ev[i]),
+    vectors:idx.map(i=>[V[0][i],V[1][i],V[2][i]])
+  };
+}
+
+// ── Estado global ──────────────────────────────────────────────
+const N=100000;
+let DS=null,SAMP=null,PCA=null;
+
+function getP(){
+  return{
+    mu:[+document.getElementById('m1').value||0,+document.getElementById('m2').value||0,+document.getElementById('m3').value||0],
+    sd:[Math.max(0.01,+document.getElementById('s1').value||1),Math.max(0.01,+document.getElementById('s2').value||1),Math.max(0.01,+document.getElementById('s3').value||1)],
+    r12:+document.getElementById('r12').value,
+    r13:+document.getElementById('r13').value,
+    r23:+document.getElementById('r23').value,
+    n:+document.getElementById('ss').value
+  };
+}
+
+function corrMat(r12,r13,r23){return[[1,r12,r13],[r12,1,r23],[r13,r23,1]];}
+
+function validate(){
+  const p=getP();
+  const L=chol3(corrMat(p.r12,p.r13,p.r23));
+  document.getElementById('corrWarn').style.display=L?'none':'block';
+  return!!L;
+}
+
+// ── Generación de datos ─────────────────────────────────────────
+function genDS(p){
+  const C=corrMat(p.r12,p.r13,p.r23);
+  const L=chol3(C);
+  if(!L)return null;
+  const x1=new Float32Array(N),x2=new Float32Array(N),x3=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const z0=randn(),z1=randn(),z2=randn();
+    const y0=L[0][0]*z0;
+    const y1=L[1][0]*z0+L[1][1]*z1;
+    const y2=L[2][0]*z0+L[2][1]*z1+L[2][2]*z2;
+    x1[i]=p.mu[0]+p.sd[0]*y0;
+    x2[i]=p.mu[1]+p.sd[1]*y1;
+    x3[i]=p.mu[2]+p.sd[2]*y2;
+  }
+  return{x1,x2,x3};
+}
+
+// Reservoir sampling O(N)
+function sample(ds,n){
+  const idx=new Int32Array(n);
+  for(let i=0;i<n;i++)idx[i]=i;
+  for(let i=n;i<N;i++){
+    const j=Math.floor(Math.random()*(i+1));
+    if(j<n)idx[j]=i;
+  }
+  return{x1:Array.from(idx,i=>ds.x1[i]),x2:Array.from(idx,i=>ds.x2[i]),x3:Array.from(idx,i=>ds.x3[i]),n};
+}
+
+// ── ACP ────────────────────────────────────────────────────────
+function computePCA(s){
+  const n=s.n,{x1,x2,x3}=s;
+  let m1=0,m2=0,m3=0;
+  for(let i=0;i<n;i++){m1+=x1[i];m2+=x2[i];m3+=x3[i];}
+  m1/=n;m2/=n;m3/=n;
+  let s11=0,s12=0,s13=0,s22=0,s23=0,s33=0;
+  for(let i=0;i<n;i++){
+    const a=x1[i]-m1,b=x2[i]-m2,c=x3[i]-m3;
+    s11+=a*a;s12+=a*b;s13+=a*c;s22+=b*b;s23+=b*c;s33+=c*c;
+  }
+  const f=1/(n-1);
+  const S=[[s11*f,s12*f,s13*f],[s12*f,s22*f,s23*f],[s13*f,s23*f,s33*f]];
+  const sd=[Math.sqrt(S[0][0]),Math.sqrt(S[1][1]),Math.sqrt(S[2][2])];
+  const R=S.map((row,i)=>row.map((v,j)=>v/(sd[i]*sd[j])));
+  const eg=jacobiEig3(S);
+  const tv=eg.values.reduce((a,b)=>a+b,0);
+  const pct=eg.values.map(v=>(v/tv)*100);
+  const cum=[];pct.forEach((v,i)=>cum.push((cum[i-1]||0)+v));
+  const cp=[[],[],[]];
+  for(let i=0;i<n;i++){
+    const z=[x1[i]-m1,x2[i]-m2,x3[i]-m3];
+    for(let k=0;k<3;k++){
+      const v=eg.vectors[k];
+      cp[k].push(z[0]*v[0]+z[1]*v[1]+z[2]*v[2]);
+    }
+  }
+  const ld=[[],[],[]];
+  for(let i=0;i<3;i++)
+    for(let k=0;k<3;k++)
+      ld[i].push(eg.vectors[k][i]*Math.sqrt(eg.values[k])/sd[i]);
+  return{S,R,sd,eigenvalues:eg.values,eigenvectors:eg.vectors,tv,pct,cum,cp,ld,n,mu:[m1,m2,m3]};
+}
+
+// ── Visualización ──────────────────────────────────────────────
+function colorByCP1(cp1){
+  const mn=Math.min(...cp1),mx=Math.max(...cp1),rng=mx-mn||1;
+  return cp1.map(v=>(v-mn)/rng);
+}
+
+const MBASE={margin:{l:0,r:0,b:0,t:10},paper_bgcolor:'transparent',showlegend:false};
+const SBASE={bgcolor:'rgba(248,249,250,0.5)'};
+
+// Estado de visibilidad de planos (índices de trace: 1=CP1-CP2, 2=CP1-CP3, 3=CP2-CP3)
+const PS={p12:false,p13:false,p23:false};
+
+function makePlane(mu,v1,v2,e1,e2,hex,vis,op=0.38){
+  // Cuatro esquinas del paralelogramo: mu ± e1·v1 ± e2·v2
+  const c=[
+    [mu[0]-e1*v1[0]-e2*v2[0], mu[1]-e1*v1[1]-e2*v2[1], mu[2]-e1*v1[2]-e2*v2[2]],
+    [mu[0]+e1*v1[0]-e2*v2[0], mu[1]+e1*v1[1]-e2*v2[1], mu[2]+e1*v1[2]-e2*v2[2]],
+    [mu[0]+e1*v1[0]+e2*v2[0], mu[1]+e1*v1[1]+e2*v2[1], mu[2]+e1*v1[2]+e2*v2[2]],
+    [mu[0]-e1*v1[0]+e2*v2[0], mu[1]-e1*v1[1]+e2*v2[1], mu[2]-e1*v1[2]+e2*v2[2]]
+  ];
+  return{
+    type:'mesh3d',
+    x:c.map(p=>p[0]), y:c.map(p=>p[1]), z:c.map(p=>p[2]),
+    i:[0,0], j:[1,2], k:[2,3],
+    color:hex, opacity:op,
+    flatshading:true, visible:vis,
+    showscale:false, hoverinfo:'skip'
+  };
+}
+
+function makePlanes(pca){
+  const mu=pca.mu,v=pca.eigenvectors,lv=pca.eigenvalues;
+  const ext=lv.map(l=>2.8*Math.sqrt(Math.max(l,0.01)));
+  return[
+    makePlane(mu,v[0],v[1],ext[0],ext[1],'#3b82f6',PS.p12,0.65),
+    makePlane(mu,v[0],v[2],ext[0],ext[2],'#a855f7',PS.p13,0.65),
+    makePlane(mu,v[1],v[2],ext[1],ext[2],'#14b8a6',PS.p23,0.65)
+  ];
+}
+
+function plot3D(sample,pca){
+  const col=colorByCP1(pca.cp[0]);
+  const mk={size:3,color:'#000000',opacity:1};
+  const scatter={type:'scatter3d',x:sample.x1,y:sample.x2,z:sample.x3,mode:'markers',marker:mk,hovertemplate:'X₁:%{x:.2f}<br>X₂:%{y:.2f}<br>X₃:%{z:.2f}<extra></extra>'};
+  Plotly.react('p3orig',[scatter,...makePlanes(pca)],
+    {scene:{xaxis:{title:'X₁'},yaxis:{title:'X₂'},zaxis:{title:'X₃'},...SBASE},...MBASE},{responsive:true,displayModeBar:false});
+  Plotly.react('p3pca',[{type:'scatter3d',x:pca.cp[0],y:pca.cp[1],z:pca.cp[2],mode:'markers',marker:mk,hovertemplate:'CP₁:%{x:.3f}<br>CP₂:%{y:.3f}<br>CP₃:%{z:.3f}<extra></extra>'}],
+    {scene:{xaxis:{title:`CP₁ (${pca.pct[0].toFixed(1)}%)`},yaxis:{title:`CP₂ (${pca.pct[1].toFixed(1)}%)`},zaxis:{title:`CP₃ (${pca.pct[2].toFixed(1)}%)`},...SBASE},...MBASE},{responsive:true,displayModeBar:false});
+  // Habilitar controles y sincronizar estado inicial
+  const ctrl=document.getElementById('planeCtrl');
+  ctrl.style.opacity='1';ctrl.style.pointerEvents='auto';ctrl.style.fontSize='';
+  document.getElementById('chk12').checked=PS.p12;
+  document.getElementById('chk13').checked=PS.p13;
+  document.getElementById('chk23').checked=PS.p23;
+}
+
+function plotBiplot(pca){
+  const col=colorByCP1(pca.cp[0]);
+  const sc=Math.max(...pca.cp[0].map(Math.abs))*0.45;
+  const vn=['X₁','X₂','X₃'],vc=['#ef4444','#f59e0b','#10b981'];
+  const traces=[{type:'scatter',x:pca.cp[0],y:pca.cp[1],mode:'markers',name:'Observaciones',marker:{size:4,color:col,colorscale:'Viridis',opacity:0.45},hovertemplate:'CP₁:%{x:.3f}<br>CP₂:%{y:.3f}<extra></extra>'}];
+  for(let i=0;i<3;i++){
+    const lx=pca.ld[i][0]*sc,ly=pca.ld[i][1]*sc;
+    traces.push({type:'scatter',x:[0,lx],y:[0,ly],mode:'lines+text',name:vn[i],line:{color:vc[i],width:2.5},text:['',vn[i]],textposition:lx>=0?'top right':'top left',textfont:{color:vc[i],size:12},hoverinfo:'skip'});
+  }
+  Plotly.react('biplot',traces,{
+    xaxis:{title:`CP₁ (${pca.pct[0].toFixed(1)}%)`,zeroline:true,zerolinecolor:'#94a3b8'},
+    yaxis:{title:`CP₂ (${pca.pct[1].toFixed(1)}%)`,zeroline:true,zerolinecolor:'#94a3b8'},
+    margin:{l:55,r:15,b:55,t:15},paper_bgcolor:'transparent',plot_bgcolor:'rgba(248,249,250,0.5)',
+    legend:{x:1.01,y:1,bgcolor:'transparent'}
+  },{responsive:true,displayModeBar:false});
+}
+
+function f4(v){return v.toFixed(4);}
+function f2(v){return v.toFixed(2);}
+
+function renderMat(M,rl,cl){
+  let h=`<table><thead><tr><th></th>${cl.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  for(let i=0;i<M.length;i++){
+    h+=`<tr><th style="text-align:left;font-weight:500;color:var(--color-text-secondary,#666)">${rl[i]}</th>`;
+    for(let j=0;j<M[i].length;j++){
+      const v=M[i][j],a=Math.abs(v);
+      const st=a>0.7?'color:#2563eb;font-weight:500':a>0.35?'color:#7c3aed':'';
+      h+=`<td style="${st}">${f4(v)}</td>`;
+    }
+    h+='</tr>';
+  }
+  return h+'</tbody></table>';
+}
+
+function renderResults(pca){
+  const cols=['#2563eb','#7c3aed','#0891b2'];
+  let vb='';
+  for(let k=0;k<3;k++){
+    vb+=`<div class="vbar-lbl"><span><strong>CP${k+1}</strong> — λ${k+1} = ${f4(pca.eigenvalues[k])}</span><span>${f2(pca.pct[k])}% &nbsp;(acum.: ${f2(pca.cum[k])}%)</span></div>
+    <div class="vbar-track"><div class="vbar-fill" style="width:${pca.pct[k]}%;background:${cols[k]}"></div></div>`;
+  }
+  document.getElementById('varBars').innerHTML=vb;
+  document.getElementById('varSec').style.display='block';
+
+  document.getElementById('covDiv').innerHTML=renderMat(pca.S,['X₁','X₂','X₃'],['X₁','X₂','X₃']);
+  document.getElementById('corDiv').innerHTML=renderMat(pca.R,['X₁','X₂','X₃'],['X₁','X₂','X₃']);
+
+  let ev=`<table><thead><tr><th>CP</th><th>Autovalor λ</th><th>Var. expl. %</th><th>Acum. %</th></tr></thead><tbody>`;
+  for(let k=0;k<3;k++)
+    ev+=`<tr class="${k===0?'hl':''}"><td><strong>CP${k+1}</strong></td><td>${f4(pca.eigenvalues[k])}</td><td>${f2(pca.pct[k])}</td><td>${f2(pca.cum[k])}</td></tr>`;
+  ev+=`<tr><td><strong>Σ</strong></td><td>${f4(pca.tv)}</td><td>100.00</td><td>100.00</td></tr></tbody></table>`;
+  document.getElementById('evDiv').innerHTML=ev;
+
+  // Loadings: filas = variables, cols = componentes
+  // eigenvectors[k][i] => loading de var i en componente k
+  const LM=[[pca.eigenvectors[0][0],pca.eigenvectors[1][0],pca.eigenvectors[2][0]],
+             [pca.eigenvectors[0][1],pca.eigenvectors[1][1],pca.eigenvectors[2][1]],
+             [pca.eigenvectors[0][2],pca.eigenvectors[1][2],pca.eigenvectors[2][2]]];
+  let ld=`<table><thead><tr><th>Variable</th><th>CP₁ (λ=${f4(pca.eigenvalues[0])})</th><th>CP₂ (λ=${f4(pca.eigenvalues[1])})</th><th>CP₃ (λ=${f4(pca.eigenvalues[2])})</th><th>Comunalidad</th></tr></thead><tbody>`;
+  ['X₁','X₂','X₃'].forEach((vn,i)=>{
+    const row=LM[i];
+    const com=row.reduce((s,v)=>s+v*v,0);
+    ld+=`<tr><td><strong>${vn}</strong></td>`;
+    row.forEach(v=>{
+      const a=Math.abs(v);
+      const st=a>0.6?'color:#2563eb;font-weight:500':a>0.3?'color:#7c3aed':'';
+      ld+=`<td style="${st}">${f4(v)}</td>`;
+    });
+    ld+=`<td>${f4(com)}</td></tr>`;
+  });
+  ld+='</tbody></table>';
+  document.getElementById('loadDiv').innerHTML=ld;
+
+  document.getElementById('matSec').style.display='block';
+  document.getElementById('biSec').style.display='block';
+
+  document.getElementById('sumDiv').innerHTML=`
+    <span>N total</span><span>${N.toLocaleString()}</span>
+    <span>Muestra</span><span>${pca.n.toLocaleString()}</span>
+    <span>CP₁ explica</span><span style="color:#2563eb">${f2(pca.pct[0])}%</span>
+    <span>CP₁+CP₂</span><span style="color:#7c3aed">${f2(pca.cum[1])}%</span>
+    <span>σ₁ muestral</span><span>${f4(pca.sd[0])}</span>
+    <span>σ₂ muestral</span><span>${f4(pca.sd[1])}</span>
+    <span>σ₃ muestral</span><span>${f4(pca.sd[2])}</span>
+  `;
+  document.getElementById('sumCard').style.display='block';
+}
+
+// ── Flujo principal ────────────────────────────────────────────
+function st(msg,type){
+  const el=document.getElementById('statusDiv');
+  el.className='status '+type;
+  el.textContent=msg;
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function run(){
+  if(!validate()){st('⚠ Correlaciones inválidas — ajustá los coeficientes.','err');return;}
+  document.getElementById('btnGen').disabled=true;
+  document.getElementById('btnRe').disabled=true;
+  st('Generando 100,000 observaciones…','go');
+  await sleep(20);
+  const p=getP();
+  DS=genDS(p);
+  if(!DS){st('⚠ Error en generación. Verificá los parámetros.','err');document.getElementById('btnGen').disabled=false;return;}
+  st('Calculando ACP sobre la muestra…','go');
+  await sleep(20);
+  SAMP=sample(DS,p.n);
+  PCA=computePCA(SAMP);
+  st('Renderizando visualizaciones…','go');
+  await sleep(20);
+  plot3D(SAMP,PCA);
+  plotBiplot(PCA);
+  renderResults(PCA);
+  st(`✓ Dataset generado (N=100,000) · Muestra n=${p.n.toLocaleString()} · CP₁: ${PCA.pct[0].toFixed(1)}%`,'ok');
+  document.getElementById('btnGen').disabled=false;
+  document.getElementById('btnRe').disabled=false;
+}
+
+async function resample(){
+  if(!DS)return;
+  const p=getP();
+  document.getElementById('btnRe').disabled=true;
+  st('Tomando nueva muestra del dataset…','go');
+  await sleep(20);
+  SAMP=sample(DS,p.n);
+  PCA=computePCA(SAMP);
+  plot3D(SAMP,PCA);
+  plotBiplot(PCA);
+  renderResults(PCA);
+  st(`✓ Nueva muestra n=${p.n.toLocaleString()} · CP₁: ${PCA.pct[0].toFixed(1)}%`,'ok');
+  document.getElementById('btnRe').disabled=false;
+}
+
+// Listeners de planos
+[['chk12','p12',1],['chk13','p13',2],['chk23','p23',3]].forEach(([id,key,ti])=>{
+  document.getElementById(id).addEventListener('change',function(){
+    PS[key]=this.checked;
+    Plotly.restyle('p3orig',{visible:this.checked},[ti]);
+  });
+});
+
+// ── Listeners ──────────────────────────────────────────────────
+['r12','r13','r23'].forEach(id=>{
+  const out={r12:'v12',r13:'v13',r23:'v23'}[id];
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=(+this.value).toFixed(2);
+    validate();
+  });
+});
+document.getElementById('ss').addEventListener('input',function(){
+  document.getElementById('ssval').textContent=(+this.value).toLocaleString();
+});
+
+window.addEventListener('load',()=>setTimeout(run,400));
+</script>
+</body>
+</html>
