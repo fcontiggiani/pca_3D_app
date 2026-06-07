@@ -371,15 +371,45 @@ function makePlanes(pca){
 
 function plot3D(sample,pca){
   const col=colorByCP1(pca.cp[0]);
-  const mk={size:3,color:'#000000',opacity:1};
-  const scatter={type:'scatter3d',x:sample.x1,y:sample.x2,z:sample.x3,mode:'markers',marker:mk,hovertemplate:'X₁:%{x:.2f}<br>X₂:%{y:.2f}<br>X₃:%{z:.2f}<extra></extra>'};
-  Plotly.react('p3orig',[scatter,...makePlanes(pca)],
-    {scene:{xaxis:{title:'X₁'},yaxis:{title:'X₂'},zaxis:{title:'X₃'},...SBASE},...MBASE},{responsive:true,displayModeBar:false});
-  Plotly.react('p3pca',[{type:'scatter3d',x:pca.cp[0],y:pca.cp[1],z:pca.cp[2],mode:'markers',marker:mk,hovertemplate:'CP₁:%{x:.3f}<br>CP₂:%{y:.3f}<br>CP₃:%{z:.3f}<extra></extra>'}],
-    {scene:{xaxis:{title:`CP₁ (${pca.pct[0].toFixed(1)}%)`},yaxis:{title:`CP₂ (${pca.pct[1].toFixed(1)}%)`},zaxis:{title:`CP₃ (${pca.pct[2].toFixed(1)}%)`},...SBASE},...MBASE},{responsive:true,displayModeBar:false});
-  // Habilitar controles y sincronizar estado inicial
+  const mk={
+    size:3, color:col, colorscale:'Viridis', opacity:0.8,
+    showscale:true,
+    colorbar:{title:{text:'Score CP₁',font:{size:10}},thickness:10,len:0.65,x:1.01}
+  };
+
+  // Gráfico espacio original: puntos + planos de componentes
+  Plotly.react('p3orig',
+    [
+      {type:'scatter3d', x:sample.x1, y:sample.x2, z:sample.x3,
+       mode:'markers', marker:mk,
+       hovertemplate:'X₁:%{x:.2f}<br>X₂:%{y:.2f}<br>X₃:%{z:.2f}<extra></extra>'},
+      ...makePlanes(pca)
+    ],
+    {scene:{xaxis:{title:'X₁'},yaxis:{title:'X₂'},zaxis:{title:'X₃'},...SBASE},...MBASE},
+    {responsive:true, displayModeBar:false}
+  );
+
+  // Gráfico espacio de componentes: solo puntos
+  Plotly.react('p3pca',
+    [
+      {type:'scatter3d', x:pca.cp[0], y:pca.cp[1], z:pca.cp[2],
+       mode:'markers', marker:mk,
+       hovertemplate:'CP₁:%{x:.3f}<br>CP₂:%{y:.3f}<br>CP₃:%{z:.3f}<extra></extra>'}
+    ],
+    {scene:{
+      xaxis:{title:`CP₁ (${pca.pct[0].toFixed(1)}%)`},
+      yaxis:{title:`CP₂ (${pca.pct[1].toFixed(1)}%)`},
+      zaxis:{title:`CP₃ (${pca.pct[2].toFixed(1)}%)`},
+      ...SBASE
+    },...MBASE},
+    {responsive:true, displayModeBar:false}
+  );
+
+  // Habilitar y sincronizar checkboxes de planos
   const ctrl=document.getElementById('planeCtrl');
-  ctrl.style.opacity='1';ctrl.style.pointerEvents='auto';ctrl.style.fontSize='';
+  ctrl.style.opacity='1';
+  ctrl.style.pointerEvents='auto';
+  ctrl.style.fontSize='0.75rem';
   document.getElementById('chk12').checked=PS.p12;
   document.getElementById('chk13').checked=PS.p13;
   document.getElementById('chk23').checked=PS.p23;
